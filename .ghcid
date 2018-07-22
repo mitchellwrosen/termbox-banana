@@ -1,0 +1,1 @@
+-c "cabal new-repl" --restart termbox-banana.cabal
