@@ -55,14 +55,21 @@ import qualified Termbox
 --
 -- * @Event@ for @reactive-banana@ events
 -- * @Termbox.Event@ for @termbox@ events
+--
+-- @since 0.1.0
 type TermboxEvent
   = Termbox.Event
 
 -- | A scene to render; a grid of cells and a cursor.
+--
+-- @since 0.1.0
 data Scene
   = Scene !Cells !Cursor
 
--- | A grid of cells. Create a 'Cells' with 'set' and combine them with ('<>').
+-- | A grid of cells. Create a 'Cells' with 'set' or 'mempty' and combine them
+-- with ('<>').
+--
+-- @since 0.1.0
 newtype Cells
   = Cells (IO ())
 #if MIN_VERSION_base(4,10,0)
@@ -76,11 +83,15 @@ instance Semigroup Cells where
 #endif
 
 -- | A cursor.
+--
+-- @since 0.1.0
 data Cursor
   = Cursor !Int !Int -- ^ Column, then row
   | NoCursor
 
 -- | Set a single cell's value.
+--
+-- @since 0.1.0
 set :: (col ~ Int, row ~ Int) => col -> row -> Termbox.Cell -> Cells
 set x y z =
   Cells (Termbox.set x y z)
@@ -100,6 +111,8 @@ type EventSource a
 -- * scene to render, and
 -- * a event stream of arbitrary values, only the first of which is relevant,
 --   which ends the @termbox@ program and returns from the @main@ action.
+--
+-- @since 0.1.0
 main
   :: (width ~ Int, height ~ Int)
   => Termbox.InputMode -- ^
