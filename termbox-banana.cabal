@@ -22,10 +22,9 @@ extra-source-files:
 
 library
   build-depends:
-      async
-    , base ^>= 4.9 || ^>= 4.10 || ^>= 4.11
+      base ^>= 4.9 || ^>= 4.10 || ^>= 4.11
     , reactive-banana ^>= 1.2
-    , stm
+    , stm ^>= 2.4
     , termbox ^>= 0.1
   default-language:
     Haskell2010
