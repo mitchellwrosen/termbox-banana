@@ -4,7 +4,7 @@ name: termbox-banana
 version: 0.1.0
 category: User Interfaces
 description:
-  reactive-banana + termbox
+  A @reactive-banana@-based interface to writing @termbox@ programs.
 synopsis: reactive-banana + termbox
 author: Mitchell Rosen
 maintainer: Mitchell Rosen <mitchellwrosen@gmail.com>

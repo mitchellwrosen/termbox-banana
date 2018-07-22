@@ -1,4 +1,4 @@
-{-# language DerivingStrategies         #-}
+{-# language CPP                        #-}
 {-# language GeneralizedNewtypeDeriving #-}
 {-# language LambdaCase                 #-}
 {-# language ScopedTypeVariables        #-}
@@ -6,16 +6,29 @@
 
 module Termbox.Banana
   ( TermboxEvent
-  , Scene(..)
-  , Cells(..)
-  , Cursor(..)
   , main
+  , Scene(..)
+  , Cells
   , set
+  , Cursor(..)
     -- * Re-exports
+  , Termbox.black
+  , Termbox.red
+  , Termbox.green
+  , Termbox.yellow
+  , Termbox.blue
+  , Termbox.magenta
+  , Termbox.cyan
+  , Termbox.white
+  , Termbox.bold
+  , Termbox.underline
+  , Termbox.reverse
+  , Termbox.Attr
   , Termbox.Cell(..)
   , Termbox.Event(..)
   , Termbox.InitError(..)
   , Termbox.Key(..)
+  , Termbox.Mouse(..)
   ) where
 
 import Control.Concurrent.STM
@@ -33,18 +46,29 @@ import qualified Termbox
 type TermboxEvent
   = Termbox.Event
 
+-- | A scene to render; a grid of cells and a cursor.
 data Scene
   = Scene !Cells !Cursor
 
+-- | A grid of cells. Create a 'Cells' with 'set' and combine them with ('<>').
 newtype Cells
   = Cells (IO ())
-  deriving newtype (Monoid, Semigroup)
+#if MIN_VERSION_base(4,10,0)
+  deriving (Monoid, Semigroup)
+#else
+instance Monoid Cells where
+  mempty = Cells (pure ())
+  mappend = (<>)
+instance Semigroup Cells where
+  Cells x <> Cells y = Cells (x >> y)
+#endif
 
+-- | A cursor.
 data Cursor
   = Cursor !Int !Int -- ^ Column, then row
   | NoCursor
 
--- | Set a cell's value.
+-- | Set a single cell's value.
 set :: (col ~ Int, row ~ Int) => col -> row -> Termbox.Cell -> Cells
 set x y z =
   Cells (Termbox.set x y z)
@@ -52,6 +76,16 @@ set x y z =
 type EventSource a
   = (AddHandler a, a -> IO ())
 
+-- | Run a @termbox@ program. Given
+--
+-- * the terminal event stream and
+-- * the time-varying terminal size,
+--
+-- return a time-varying
+--
+-- * scene to render, or
+-- * an arbitrary value, to end the @termbox@ program and return from the
+--   @main@ action.
 main
   :: (width ~ Int, height ~ Int)
   => (  Event TermboxEvent
@@ -94,12 +128,11 @@ main run =
         maybe loop pure
 
 moment
-  :: (width ~ Int, height ~ Int)
-  => (  Event TermboxEvent
-     -> Behavior (width, height)
+  :: (  Event TermboxEvent
+     -> Behavior (Int, Int)
      -> MomentIO (Behavior (Either a Scene)))
   -> Event TermboxEvent
-  -> Behavior (width, height)
+  -> Behavior (Int, Int)
   -> (a -> IO ())
   -> MomentIO ()
 moment run eEvent bSize abort = do
