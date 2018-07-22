@@ -5,7 +5,9 @@
 {-# language TypeFamilies               #-}
 
 module Termbox.Banana
-  ( TermboxEvent
+  ( -- $intro
+
+    TermboxEvent
   , main
   , Scene(..)
   , Cells
@@ -27,8 +29,11 @@ module Termbox.Banana
   , Termbox.Cell(..)
   , Termbox.Event(..)
   , Termbox.InitError(..)
+  , Termbox.InputMode(..)
   , Termbox.Key(..)
   , Termbox.Mouse(..)
+  , Termbox.MouseMode(..)
+  , Termbox.OutputMode(..)
   ) where
 
 import Control.Concurrent.STM
@@ -37,6 +42,13 @@ import Reactive.Banana
 import Reactive.Banana.Frameworks
 
 import qualified Termbox
+
+-- $intro
+-- This module is intended to be imported qualified.
+--
+-- @
+-- import qualified Termbox.Banana as Termbox
+-- @
 
 -- | A @termbox@ event. This type alias exists only for Haddock readability;
 -- in code, you are encouraged to use
@@ -76,7 +88,9 @@ set x y z =
 type EventSource a
   = (AddHandler a, a -> IO ())
 
--- | Run a @termbox@ program. Given
+-- | Run a @termbox@ program with the specified input and output modes.
+--
+-- Given
 --
 -- * the terminal event stream and
 -- * the time-varying terminal size,
@@ -88,12 +102,17 @@ type EventSource a
 --   @main@ action.
 main
   :: (width ~ Int, height ~ Int)
-  => (  Event TermboxEvent
+  => Termbox.InputMode -- ^
+  -> Termbox.OutputMode -- ^
+  -> (  Event TermboxEvent
      -> Behavior (width, height)
-     -> MomentIO (Behavior (Either a Scene)))
+     -> MomentIO (Behavior (Either a Scene))) -- ^
   -> IO a
-main run =
+main imode omode run =
   Termbox.main $ do
+    Termbox.setInputMode imode
+    Termbox.setOutputMode omode
+
     doneVar :: TMVar a <-
       newEmptyTMVarIO
 
