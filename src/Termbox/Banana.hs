@@ -97,16 +97,16 @@ type EventSource a
 --
 -- return a time-varying
 --
--- * scene to render, or
--- * an arbitrary value, to end the @termbox@ program and return from the
---   @main@ action.
+-- * scene to render, and
+-- * a event stream of arbitrary values, only the first of which is relevant,
+--   which ends the @termbox@ program and returns from the @main@ action.
 main
   :: (width ~ Int, height ~ Int)
   => Termbox.InputMode -- ^
   -> Termbox.OutputMode -- ^
   -> (  Event TermboxEvent
      -> Behavior (width, height)
-     -> MomentIO (Behavior (Either a Scene))) -- ^
+     -> MomentIO (Behavior Scene, Event a))
   -> IO a
 main imode omode run =
   Termbox.main $ do
@@ -149,30 +149,28 @@ main imode omode run =
 moment
   :: (  Event TermboxEvent
      -> Behavior (Int, Int)
-     -> MomentIO (Behavior (Either a Scene)))
+     -> MomentIO (Behavior Scene, Event a))
   -> Event TermboxEvent
   -> Behavior (Int, Int)
   -> (a -> IO ())
   -> MomentIO ()
 moment run eEvent bSize abort = do
-  bScene :: Behavior (Either a Scene) <-
+  (bScene, eDone) :: (Behavior Scene, Event a) <-
     run eEvent bSize
 
-  eScene :: Event (Future (Either a Scene)) <-
+  eScene :: Event (Future Scene) <-
     changes bScene
 
   let
-    render :: Either a Scene -> IO ()
-    render =
-      either
-        abort
-        (\(Scene (Cells cells) cursor) -> do
-          Termbox.clear mempty mempty
-          cells
-          case cursor of
-            Cursor c r -> Termbox.setCursor c r
-            NoCursor -> Termbox.hideCursor
-          Termbox.flush)
+    render :: Scene -> IO ()
+    render (Scene (Cells cells) cursor) = do
+      Termbox.clear mempty mempty
+      cells
+      case cursor of
+        Cursor c r -> Termbox.setCursor c r
+        NoCursor -> Termbox.hideCursor
+      Termbox.flush
 
   liftIO . render =<< valueB bScene
+  reactimate (abort <$> eDone)
   reactimate' ((fmap.fmap) render eScene)
