@@ -6,10 +6,11 @@
 
 module Termbox.Banana
   ( TermboxEvent
+  , Scene(..)
+  , Cells(..)
+  , Cursor(..)
   , main
-  , Scene
   , set
-  , done
     -- * Re-exports
   , Termbox.Cell(..)
   , Termbox.Event(..)
@@ -32,28 +33,21 @@ import qualified Termbox
 type TermboxEvent
   = Termbox.Event
 
--- | The scene to render.
-data Scene a
-  = SceneDone a
-  | SceneDraw (IO ())
+data Scene
+  = Scene !Cells !Cursor
 
-instance Monoid (Scene a) where
-  mempty = SceneDraw mempty
-  mappend = (<>)
+newtype Cells
+  = Cells (IO ())
+  deriving newtype (Monoid, Semigroup)
 
-instance Semigroup (Scene a) where
-  SceneDone x <> _ = SceneDone x
-  _ <> SceneDone x = SceneDone x
-  SceneDraw x <> SceneDraw y = SceneDraw (x <> y)
-
-done :: a -> Scene a
-done =
-  SceneDone
+data Cursor
+  = Cursor !Int !Int -- ^ Column, then row
+  | NoCursor
 
 -- | Set a cell's value.
-set :: (col ~ Int, row ~ Int) => col -> row -> Termbox.Cell -> Scene a
+set :: (col ~ Int, row ~ Int) => col -> row -> Termbox.Cell -> Cells
 set x y z =
-  SceneDraw (Termbox.set x y z)
+  Cells (Termbox.set x y z)
 
 type EventSource a
   = (AddHandler a, a -> IO ())
@@ -62,7 +56,7 @@ main
   :: (width ~ Int, height ~ Int)
   => (  Event TermboxEvent
      -> Behavior (width, height)
-     -> MomentIO (Behavior (Scene a)))
+     -> MomentIO (Behavior (Either a Scene)))
   -> IO a
 main run =
   Termbox.main $ do
@@ -103,27 +97,30 @@ moment
   :: (width ~ Int, height ~ Int)
   => (  Event TermboxEvent
      -> Behavior (width, height)
-     -> MomentIO (Behavior (Scene a)))
+     -> MomentIO (Behavior (Either a Scene)))
   -> Event TermboxEvent
   -> Behavior (width, height)
   -> (a -> IO ())
   -> MomentIO ()
 moment run eEvent bSize abort = do
-  bScene :: Behavior (Scene a) <-
+  bScene :: Behavior (Either a Scene) <-
     run eEvent bSize
 
-  eScene :: Event (Future (Scene a)) <-
+  eScene :: Event (Future (Either a Scene)) <-
     changes bScene
 
   let
-    render :: Scene a -> IO ()
-    render = \case
-      SceneDone x ->
-        abort x
-      SceneDraw m -> do
-        Termbox.clear mempty mempty
-        m
-        Termbox.flush
+    render :: Either a Scene -> IO ()
+    render =
+      either
+        abort
+        (\(Scene (Cells cells) cursor) -> do
+          Termbox.clear mempty mempty
+          cells
+          case cursor of
+            Cursor c r -> Termbox.setCursor c r
+            NoCursor -> Termbox.hideCursor
+          Termbox.flush)
 
   liftIO . render =<< valueB bScene
   reactimate' ((fmap.fmap) render eScene)
