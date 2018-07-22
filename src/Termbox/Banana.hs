@@ -36,7 +36,7 @@ module Termbox.Banana
   , Termbox.OutputMode(..)
   ) where
 
-import Control.Concurrent.STM
+import Control.Concurrent.MVar
 import Data.Function (fix)
 import Reactive.Banana
 import Reactive.Banana.Frameworks
@@ -126,8 +126,8 @@ main imode omode run =
     Termbox.setInputMode imode
     Termbox.setOutputMode omode
 
-    doneVar :: TMVar a <-
-      newEmptyTMVarIO
+    doneVar :: MVar a <-
+      newEmptyMVar
 
     (eventAddHandler, fireEvent) :: EventSource TermboxEvent <-
       newAddHandler
@@ -150,13 +150,13 @@ main imode omode run =
           flip stepper eResize =<<
             liftIO Termbox.size
 
-        moment run eEvent bSize (atomically . putTMVar doneVar)
+        moment run eEvent bSize (putMVar doneVar)
 
     actuate network
 
     fix $ \loop -> do
       Termbox.poll >>= fireEvent
-      atomically (tryReadTMVar doneVar) >>=
+      tryReadMVar doneVar >>=
         maybe loop pure
 
 moment
