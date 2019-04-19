@@ -66,8 +66,9 @@ type TermboxEvent
 data Scene
   = Scene !Cells !Cursor
 
--- | A grid of cells. Create a 'Cells' with 'set' or 'mempty' and combine them
--- with ('<>').
+-- | A grid of cells.
+--
+-- Create a 'Cells' with 'set' or 'mempty' and combine them with ('<>').
 --
 -- @since 0.1.0
 newtype Cells
@@ -89,10 +90,10 @@ data Cursor
   = Cursor !Int !Int -- ^ Column, then row
   | NoCursor
 
--- | Set a single cell's value.
+-- | Set a single cell's value (column, then row).
 --
 -- @since 0.1.0
-set :: (col ~ Int, row ~ Int) => col -> row -> Termbox.Cell -> Cells
+set :: Int -> Int -> Termbox.Cell -> Cells
 set x y z =
   Cells (Termbox.set x y z)
 
@@ -103,22 +104,21 @@ type EventSource a
 --
 -- Given
 --
--- * the terminal event stream and
--- * the time-varying terminal size,
+-- * the terminal event stream
+-- * the time-varying terminal size (width, then height)
 --
--- return a time-varying
+-- return
 --
--- * scene to render, and
--- * a event stream of arbitrary values, only the first of which is relevant,
+-- * a time-varying scene to render
+-- * an event stream of arbitrary values, only the first of which is relevant,
 --   which ends the @termbox@ program and returns from the @main@ action.
 --
 -- @since 0.1.0
 main
-  :: (width ~ Int, height ~ Int)
-  => Termbox.InputMode -- ^
+  :: Termbox.InputMode -- ^
   -> Termbox.OutputMode -- ^
   -> (  Event TermboxEvent
-     -> Behavior (width, height)
+     -> Behavior (Int, Int)
      -> MomentIO (Behavior Scene, Event a))
   -> IO a
 main imode omode run =
