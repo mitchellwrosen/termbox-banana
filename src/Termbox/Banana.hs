@@ -1,8 +1,7 @@
-{-# language CPP                        #-}
-{-# language GeneralizedNewtypeDeriving #-}
-{-# language LambdaCase                 #-}
-{-# language ScopedTypeVariables        #-}
-{-# language TypeFamilies               #-}
+{-# language CPP                 #-}
+{-# language LambdaCase          #-}
+{-# language ScopedTypeVariables #-}
+{-# language TypeFamilies        #-}
 
 module Termbox.Banana
   ( -- $intro
@@ -146,7 +145,7 @@ main imode omode run =
                 _ -> Nothing)
               <$> eEvent)
 
-        bSize :: Behavior (Int, Int) <- do
+        bSize :: Behavior (Int, Int) <-
           flip stepper eResize =<<
             liftIO Termbox.size
 
