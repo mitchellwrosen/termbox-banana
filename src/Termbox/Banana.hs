@@ -1,7 +1,8 @@
-{-# language CPP                 #-}
-{-# language LambdaCase          #-}
-{-# language ScopedTypeVariables #-}
-{-# language TypeFamilies        #-}
+{-# language DerivingStrategies         #-}
+{-# language GeneralizedNewtypeDeriving #-}
+{-# language LambdaCase                 #-}
+{-# language ScopedTypeVariables        #-}
+{-# language TypeFamilies               #-}
 
 module Termbox.Banana
   ( -- $intro
@@ -72,15 +73,7 @@ data Scene
 -- @since 0.1.0
 newtype Cells
   = Cells (IO ())
-#if MIN_VERSION_base(4,10,0)
-  deriving (Monoid, Semigroup)
-#else
-instance Monoid Cells where
-  mempty = Cells (pure ())
-  mappend = (<>)
-instance Semigroup Cells where
-  Cells x <> Cells y = Cells (x >> y)
-#endif
+  deriving newtype (Monoid, Semigroup)
 
 -- | A cursor.
 --

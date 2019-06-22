@@ -14,7 +14,7 @@ copyright: (c) 2018, Mitchell Rosen
 license: BSD3
 license-file: LICENSE
 build-type: Simple
-tested-with: GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.4
+tested-with: GHC == 8.4.4, GHC == 8.6.5
 
 extra-source-files:
   .travis.yml
@@ -23,7 +23,7 @@ extra-source-files:
 
 library
   build-depends:
-      base ^>= 4.9 || ^>= 4.10 || ^>= 4.11 || ^>= 4.12
+      base ^>= 4.10 || ^>= 4.11 || ^>= 4.12
     , reactive-banana ^>= 1.2
     , termbox ^>= 0.1
   default-language:
@@ -31,21 +31,19 @@ library
   exposed-modules:
     Termbox.Banana
   ghc-options:
-    -fprint-expanded-synonyms
-    -fprint-explicit-foralls
-    -fprint-explicit-kinds
-    -fprint-unicode-syntax
     -Wall
     -Wcompat
     -Widentities
     -Wincomplete-record-updates
     -Wincomplete-uni-patterns
+    -Wmissing-export-lists
     -Wnoncanonical-monad-instances
     -Wnoncanonical-monadfail-instances
+    -Wpartial-fields
     -Wredundant-constraints
-  if impl(ghc >= 8.4)
-    ghc-options:
-      -Wmissing-export-lists
-      -Wpartial-fields
+    -fprint-expanded-synonyms
+    -fprint-explicit-foralls
+    -fprint-explicit-kinds
+    -fprint-unicode-syntax
   hs-source-dirs:
     src
