@@ -8,7 +8,8 @@ module Termbox.Banana
   ( -- $intro
 
     TermboxEvent
-  , main
+  , run
+  , run_
   , Scene(..)
   , Cells
   , set
@@ -37,6 +38,7 @@ module Termbox.Banana
   ) where
 
 import Control.Concurrent.MVar
+import Control.Exception (throwIO)
 import Data.Function (fix)
 import Reactive.Banana
 import Reactive.Banana.Frameworks
@@ -105,16 +107,16 @@ type EventSource a
 -- * an event stream of arbitrary values, only the first of which is relevant,
 --   which ends the @termbox@ program and returns from the @main@ action.
 --
--- @since 0.1.0
-main
+-- @since 0.2.0
+run
   :: Termbox.InputMode -- ^
   -> Termbox.OutputMode -- ^
   -> (  Event TermboxEvent
      -> Behavior (Int, Int)
      -> MomentIO (Behavior Scene, Event a))
-  -> IO a
-main imode omode run =
-  Termbox.main $ do
+  -> IO (Either Termbox.InitError a)
+run imode omode program =
+  Termbox.run $ do
     Termbox.setInputMode imode
     Termbox.setOutputMode omode
 
@@ -140,9 +142,9 @@ main imode omode run =
 
         bSize :: Behavior (Int, Int) <-
           flip stepper eResize =<<
-            liftIO Termbox.size
+            liftIO Termbox.getSize
 
-        moment run eEvent bSize (putMVar doneVar)
+        moment program eEvent bSize (putMVar doneVar)
 
     actuate network
 
@@ -150,6 +152,19 @@ main imode omode run =
       Termbox.poll >>= fireEvent
       tryReadMVar doneVar >>=
         maybe loop pure
+
+-- | Like 'run', but throws 'Termbox.InitError's as @IO@ exceptions.
+--
+-- @since 0.2.0
+run_
+  :: Termbox.InputMode -- ^
+  -> Termbox.OutputMode -- ^
+  -> (  Event TermboxEvent
+     -> Behavior (Int, Int)
+     -> MomentIO (Behavior Scene, Event a))
+  -> IO a
+run_ imode omode program =
+  run imode omode program >>= either throwIO pure
 
 moment
   :: (  Event TermboxEvent
@@ -159,9 +174,9 @@ moment
   -> Behavior (Int, Int)
   -> (a -> IO ())
   -> MomentIO ()
-moment run eEvent bSize abort = do
+moment program eEvent bSize abort = do
   (bScene, eDone) :: (Behavior Scene, Event a) <-
-    run eEvent bSize
+    program eEvent bSize
 
   eScene :: Event (Future Scene) <-
     changes bScene

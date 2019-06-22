@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to the [Haskell Package Versioning Policy](https://pvp.haskell.org/).
 
+## [0.2.0] - 2019-06-22
+
+### Added
+- Added `run`
+
+### Changed
+- Renamed `main` to `run_`
+- Bumped `termbox` lower bound
+
 ## [0.1.1] - 2019-04-19
 
 ### Changed
