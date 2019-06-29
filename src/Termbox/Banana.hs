@@ -6,13 +6,12 @@
 
 module Termbox.Banana
   ( -- $intro
-
     TermboxEvent
   , run
   , run_
+  , set
   , Scene(..)
   , Cells
-  , set
   , Cursor(..)
     -- * Re-exports
   , Termbox.black
@@ -44,6 +43,7 @@ import Reactive.Banana
 import Reactive.Banana.Frameworks
 
 import qualified Termbox
+
 
 -- $intro
 -- This module is intended to be imported qualified.
