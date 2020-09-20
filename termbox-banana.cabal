@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name: termbox-banana
-version: 0.2.0
+version: 0.3.0
 category: User Interfaces
 description:
   A @reactive-banana@-based interface to writing @termbox@ programs.
