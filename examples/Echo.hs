@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main where
+module Main (main) where
 
 import Reactive.Banana
 import Reactive.Banana.Frameworks
@@ -9,15 +9,12 @@ import qualified Termbox.Banana as Termbox
 
 main :: IO ()
 main =
-  Termbox.run_
-    (Termbox.InputModeEsc Termbox.MouseModeNo)
-    Termbox.OutputModeNormal
-    moment
+  Termbox.run moment
 
 moment ::
   Event Termbox.Event ->
   Behavior (Int, Int) ->
-  MomentIO (Behavior Termbox.Scene, Event ())
+  MomentIO (Behavior (Termbox.Cells, Termbox.Cursor), Event ())
 moment eEvent _bSize = do
   let eQuit :: Event ()
       eQuit =
@@ -32,9 +29,9 @@ moment eEvent _bSize = do
       bCells =
         maybe mempty renderEvent <$> bLatestEvent
 
-  let bScene :: Behavior Termbox.Scene
+  let bScene :: Behavior (Termbox.Cells, Termbox.Cursor)
       bScene =
-        Termbox.Scene
+        (,)
           <$> bCells
           <*> pure Termbox.NoCursor
 
@@ -48,5 +45,5 @@ renderEvent =
 
 isKeyEsc :: Termbox.Event -> Bool
 isKeyEsc = \case
-  Termbox.EventKey Termbox.KeyEsc _ -> True
+  Termbox.EventKey Termbox.KeyEsc -> True
   _ -> False

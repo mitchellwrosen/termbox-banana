@@ -18,6 +18,7 @@ module Termbox.Banana
     Termbox.underline,
     Termbox.white,
     Termbox.yellow,
+    Termbox.set,
     Termbox.Attr,
     Termbox.Cell (..),
     Termbox.Cells,

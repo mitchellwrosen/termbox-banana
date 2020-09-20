@@ -27,15 +27,12 @@ import Text.HTML.TagSoup
 
 main :: IO ()
 main =
-  Termbox.run_
-    (Termbox.InputModeEsc Termbox.MouseModeNo)
-    Termbox.OutputModeNormal
-    moment
+  Termbox.run moment
 
 moment ::
   Event Termbox.Event ->
   Behavior (Int, Int) ->
-  MomentIO (Behavior Termbox.Scene, Event ())
+  MomentIO (Behavior (Termbox.Cells, Termbox.Cursor), Event ())
 moment eEvent bSize = mdo
   eTick :: Event () <-
     makeTickEvent
@@ -46,8 +43,7 @@ moment eEvent bSize = mdo
   eSearchBox :: Event String <-
     makeSearchBoxEvent eKey
 
-  reactimate
-    ((atomically . writeTQueue requestQueue . reverse) <$> eSearchBox)
+  reactimate ((atomically . writeTQueue requestQueue . reverse) <$> eSearchBox)
 
   let eEmptySearchBox :: Event String
       eEmptySearchBox =
@@ -104,9 +100,9 @@ moment eEvent bSize = mdo
           <$> bHeight
           <*> bSearchBox
 
-  let bScene :: Behavior Termbox.Scene
+  let bScene :: Behavior (Termbox.Cells, Termbox.Cursor)
       bScene =
-        Termbox.Scene
+        (,)
           <$> bCells
           <*> bCursor
 
@@ -137,7 +133,7 @@ makeSearchBoxEvent eKey =
     ( unions
         [ (:) <$> filterJust (keyAsChar <$> eKey),
           (' ' :) <$ filterE (== Termbox.KeySpace) eKey,
-          safeTail <$ filterE (== Termbox.KeyBackspace2) eKey
+          safeTail <$ filterE (== Termbox.KeyCtrl8) eKey
         ]
     )
 
@@ -326,7 +322,7 @@ performHoogleSearch query =
 
 eventAsKey :: Termbox.Event -> Maybe Termbox.Key
 eventAsKey = \case
-  Termbox.EventKey k _ -> Just k
+  Termbox.EventKey k -> Just k
   _ -> Nothing
 
 keyAsChar :: Termbox.Key -> Maybe Char
