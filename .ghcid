@@ -1,1 +1,1 @@
--c "cabal v2-repl -O0" --restart termbox-banana.cabal
+-c "cabal repl -O0" --restart termbox-banana.cabal

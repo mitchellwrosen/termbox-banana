@@ -1,40 +1,42 @@
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
 
 module Termbox.Banana
   ( -- $intro
     TermboxEvent,
     run,
-    run_,
-    set,
-    Scene (..),
-    Cells,
-    Cursor (..),
 
     -- * Re-exports
     Termbox.black,
-    Termbox.red,
-    Termbox.green,
-    Termbox.yellow,
     Termbox.blue,
-    Termbox.magenta,
-    Termbox.cyan,
-    Termbox.white,
     Termbox.bold,
-    Termbox.underline,
+    Termbox.cyan,
+    Termbox.green,
+    Termbox.magenta,
+    Termbox.red,
     Termbox.reverse,
+    Termbox.underline,
+    Termbox.white,
+    Termbox.yellow,
     Termbox.Attr,
     Termbox.Cell (..),
+    Termbox.Cells,
+    Termbox.Cursor (..),
     Termbox.Event (..),
     Termbox.InitError (..),
-    Termbox.InputMode (..),
     Termbox.Key (..),
+    pattern Termbox.KeyCtrl2,
+    pattern Termbox.KeyCtrl3,
+    pattern Termbox.KeyCtrl4,
+    pattern Termbox.KeyCtrl5,
+    pattern Termbox.KeyCtrl7,
+    pattern Termbox.KeyCtrlH,
+    pattern Termbox.KeyCtrlI,
+    pattern Termbox.KeyCtrlLsqBracket,
+    pattern Termbox.KeyCtrlM,
+    pattern Termbox.KeyCtrlUnderscore,
     Termbox.Mouse (..),
-    Termbox.MouseMode (..),
-    Termbox.OutputMode (..),
+    Termbox.PollError (..),
 
     -- * Example
     -- $example
@@ -42,7 +44,6 @@ module Termbox.Banana
 where
 
 import Control.Concurrent.MVar
-import Control.Exception (throwIO)
 import Data.Function (fix)
 import Reactive.Banana
 import Reactive.Banana.Frameworks
@@ -50,13 +51,6 @@ import qualified Termbox
 
 -- $intro
 -- See the bottom of this module for a simple, runnable example to get started.
---
--- Here's how to run the examples with @cabal@:
---
--- @
--- cabal v2-run --constraint "termbox-banana +build-examples" termbox-banana-example-echo
--- cabal v2-run --constraint "termbox-banana +build-examples" termbox-banana-example-hoogle
--- @
 --
 -- This module is intended to be imported qualified.
 --
@@ -69,40 +63,8 @@ import qualified Termbox
 --
 -- * @Event@ for @reactive-banana@ events
 -- * @Termbox.Event@ for @termbox@ events
---
--- @since 0.1.0
 type TermboxEvent =
   Termbox.Event
-
--- | A scene to render; a grid of cells and a cursor.
---
--- @since 0.1.0
-data Scene
-  = Scene !Cells !Cursor
-
--- | A grid of cells.
---
--- Create a 'Cells' with 'set' or 'mempty' and combine them with ('<>').
---
--- @since 0.1.0
-newtype Cells
-  = Cells (IO ())
-  deriving newtype (Monoid, Semigroup)
-
--- | A cursor.
---
--- @since 0.1.0
-data Cursor
-  = -- | Column, then row
-    Cursor !Int !Int
-  | NoCursor
-
--- | Set a single cell's value (column, then row).
---
--- @since 0.1.0
-set :: Int -> Int -> Termbox.Cell -> Cells
-set x y z =
-  Cells (Termbox.set x y z)
 
 type EventSource a =
   (AddHandler a, a -> IO ())
@@ -119,23 +81,14 @@ type EventSource a =
 -- * a time-varying scene to render
 -- * an event stream of arbitrary values, only the first of which is relevant,
 --   which ends the @termbox@ program and returns from the @main@ action.
---
--- @since 0.2.0
 run ::
-  -- |
-  Termbox.InputMode ->
-  -- |
-  Termbox.OutputMode ->
   ( Event TermboxEvent ->
     Behavior (Int, Int) ->
-    MomentIO (Behavior Scene, Event a)
+    MomentIO (Behavior (Termbox.Cells, Termbox.Cursor), Event a)
   ) ->
-  IO (Either Termbox.InitError a)
-run imode omode program =
-  Termbox.run $ do
-    Termbox.setInputMode imode
-    Termbox.setOutputMode omode
-
+  IO a
+run program =
+  Termbox.run $ \width height render poll -> do
     doneVar :: MVar a <-
       newEmptyMVar
 
@@ -158,58 +111,32 @@ run imode omode program =
                 )
 
         bSize :: Behavior (Int, Int) <-
-          flip stepper eResize
-            =<< liftIO Termbox.getSize
+          flip stepper eResize (width, height)
 
-        moment program eEvent bSize (putMVar doneVar)
+        moment (uncurry render) program eEvent bSize (putMVar doneVar)
 
     actuate network
 
     fix $ \loop -> do
-      Termbox.poll >>= fireEvent
-      tryReadMVar doneVar
-        >>= maybe loop pure
-
--- | Like 'run', but throws 'Termbox.InitError's as @IO@ exceptions.
---
--- @since 0.2.0
-run_ ::
-  -- |
-  Termbox.InputMode ->
-  -- |
-  Termbox.OutputMode ->
-  ( Event TermboxEvent ->
-    Behavior (Int, Int) ->
-    MomentIO (Behavior Scene, Event a)
-  ) ->
-  IO a
-run_ imode omode program =
-  run imode omode program >>= either throwIO pure
+      poll >>= fireEvent
+      tryReadMVar doneVar >>= maybe loop pure
 
 moment ::
+  ((Termbox.Cells, Termbox.Cursor) -> IO ()) ->
   ( Event TermboxEvent ->
     Behavior (Int, Int) ->
-    MomentIO (Behavior Scene, Event a)
+    MomentIO (Behavior (Termbox.Cells, Termbox.Cursor), Event a)
   ) ->
   Event TermboxEvent ->
   Behavior (Int, Int) ->
   (a -> IO ()) ->
   MomentIO ()
-moment program eEvent bSize abort = do
-  (bScene, eDone) :: (Behavior Scene, Event a) <-
+moment render program eEvent bSize abort = do
+  (bScene, eDone) :: (Behavior (Termbox.Cells, Termbox.Cursor), Event a) <-
     program eEvent bSize
 
-  eScene :: Event (Future Scene) <-
+  eScene :: Event (Future (Termbox.Cells, Termbox.Cursor)) <-
     changes bScene
-
-  let render :: Scene -> IO ()
-      render (Scene (Cells cells) cursor) = do
-        Termbox.clear mempty mempty
-        cells
-        case cursor of
-          Cursor c r -> Termbox.setCursor c r
-          NoCursor -> Termbox.hideCursor
-        Termbox.flush
 
   liftIO . render =<< valueB bScene
   reactimate (abort <$> eDone)
@@ -233,15 +160,12 @@ moment program eEvent bSize abort = do
 --
 -- main :: IO ()
 -- main =
---   Termbox.'run_'
---     (Termbox.'Termbox.InputModeEsc' Termbox.'Termbox.MouseModeNo')
---     Termbox.'Termbox.OutputModeNormal'
---     moment
+--   Termbox.'run' moment
 --
 -- moment
 --   :: Event Termbox.'Termbox.Event'
 --   -> Behavior (Int, Int)
---   -> MomentIO (Behavior Termbox.'Termbox.Scene', Event ())
+--   -> MomentIO (Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor'), Event ())
 -- moment eEvent _bSize = do
 --   let
 --     eQuit :: Event ()
@@ -259,9 +183,9 @@ moment program eEvent bSize abort = do
 --       maybe mempty renderEvent \<$\> bLatestEvent
 --
 --   let
---     bScene :: Behavior Termbox.'Termbox.Scene'
+--     bScene :: Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor')
 --     bScene =
---       Termbox.'Termbox.Scene'
+--       (,)
 --         \<$\> bCells
 --         \<*\> pure Termbox.'Termbox.NoCursor'
 --
