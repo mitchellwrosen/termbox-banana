@@ -23,16 +23,18 @@ author: Mitchell Rosen
 maintainer: Mitchell Rosen <mitchellwrosen@gmail.com>
 homepage: https://github.com/mitchellwrosen/termbox-banana
 bug-reports: https://github.com/mitchellwrosen/termbox-banana/issues
-copyright: (c) 2018-2019, Mitchell Rosen
+copyright: (c) 2018-2020, Mitchell Rosen
 license: BSD-3-Clause
 license-file: LICENSE
 build-type: Simple
-tested-with: GHC == 8.4.4, GHC == 8.6.5
 
 extra-source-files:
-  .travis.yml
   CHANGELOG.md
   README.md
+
+source-repository head
+  type: git
+  location: git://github.com/mitchellwrosen/termbox-banana.git
 
 flag build-examples
   description: Build example executables
