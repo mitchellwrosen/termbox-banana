@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to the [Haskell Package Versioning Policy](https://pvp.haskell.org/).
 
+## Unreleased
+
+### Changed
+- Support GHC 8.8, GHC 8.10
+
 ## [0.2.0] - 2019-06-28
 
 ### Added

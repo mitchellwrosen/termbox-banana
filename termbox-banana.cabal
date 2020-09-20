@@ -43,7 +43,7 @@ flag build-examples
 
 library
   build-depends:
-      base ^>= 4.10 || ^>= 4.11 || ^>= 4.12
+      base ^>= 4.10 || ^>= 4.11 || ^>= 4.12 || ^>= 4.13 || ^>= 4.14
     , reactive-banana ^>= 1.2
     , termbox ^>= 0.2
 
