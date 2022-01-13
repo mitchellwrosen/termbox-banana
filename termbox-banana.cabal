@@ -17,6 +17,7 @@ copyright: (c) 2018-2020, Mitchell Rosen
 license: BSD-3-Clause
 license-file: LICENSE
 build-type: Simple
+tested-with: GHC ==8.10.7, GHC ==9.0.2, GHC ==9.2.1
 x-revision: 1
 
 extra-source-files:
