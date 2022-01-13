@@ -8,16 +8,6 @@ description:
   .
   See also the <https://hackage.haskell.org/termbox termbox> package for a
   lower-level, imperative interface.
-  .
-  __/NOTE/__: The dependencies listed on Hackage are misleading! Most are only
-  used in the examples provided, which are built only if the @build-examples@
-  flag is explicitly enabled.
-  .
-  The actual dependencies of the @termbox-banana@ library are only:
-  .
-  * base
-  * reactive-banana
-  * termbox
 synopsis: reactive-banana + termbox
 author: Mitchell Rosen
 maintainer: Mitchell Rosen <mitchellwrosen@gmail.com>
@@ -36,17 +26,17 @@ source-repository head
   type: git
   location: git://github.com/mitchellwrosen/termbox-banana.git
 
-flag build-examples
-  description: Build example executables
-  default: False
-  manual: True
-
-common component
+library
+  build-depends:
+    base ^>= 4.10 || ^>= 4.11 || ^>= 4.12 || ^>= 4.13 || ^>= 4.14,
+    reactive-banana ^>= 1.2,
+    termbox ^>= 0.3,
   default-extensions:
     GeneralizedNewtypeDeriving
     InstanceSigs
     LambdaCase
   default-language: Haskell2010
+  exposed-modules: Termbox.Banana
   ghc-options:
     -Weverything
     -Wno-implicit-prelude
@@ -59,43 +49,4 @@ common component
     ghc-options:
       -Wno-missing-safe-haskell-mode
       -Wno-prepositive-qualified-module
-
-common example-executable
-  import: component
-  if !flag(build-examples)
-    buildable: False
-  build-depends:
-    base,
-    reactive-banana,
-    termbox-banana,
-  ghc-options: -Wall -threaded "-with-rtsopts=-N"
-  hs-source-dirs: examples
-
-library
-  import: component
-  build-depends:
-      base ^>= 4.10 || ^>= 4.11 || ^>= 4.12 || ^>= 4.13 || ^>= 4.14
-    , reactive-banana ^>= 1.2
-    , termbox ^>= 0.3
-  exposed-modules: Termbox.Banana
   hs-source-dirs: src
-
-executable termbox-banana-example-echo
-  import: example-executable
-  ghc-options: -Wall -threaded "-with-rtsopts=-N"
-  main-is: Echo.hs
-
-executable termbox-banana-example-hoogle
-  import: example-executable
-  if !flag(build-examples)
-    buildable: False
-  build-depends:
-    aeson,
-    async,
-    http-conduit,
-    lens,
-    lens-aeson,
-    mtl,
-    stm,
-    tagsoup,
-  main-is: Hoogle.hs
