@@ -2,11 +2,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Termbox.Banana
-  ( -- $intro
+  ( -- * Introduction
+    -- $intro
+
+    -- * Core API
     TermboxEvent,
     run,
 
-    -- * Re-exports
+    -- * Re-exports from @termbox@
     Termbox.black,
     Termbox.blue,
     Termbox.bold,
@@ -38,9 +41,6 @@ module Termbox.Banana
     pattern Termbox.KeyCtrlUnderscore,
     Termbox.Mouse (..),
     Termbox.PollError (..),
-
-    -- * Example
-    -- $example
   )
 where
 
@@ -51,12 +51,71 @@ import Reactive.Banana.Frameworks
 import qualified Termbox
 
 -- $intro
--- See the bottom of this module for a simple, runnable example to get started.
 --
--- This module is intended to be imported qualified.
+-- This module is intended to be imported qualified:
 --
 -- @
 -- import qualified Termbox.Banana as Termbox
+-- @
+--
+-- ==== __👉 Quick start example__
+--
+-- This is a program that displays the last key pressed, and quits on @Esc@:
+--
+-- @
+-- {-\# LANGUAGE LambdaCase          \#-}
+-- {-\# LANGUAGE ScopedTypeVariables \#-}
+--
+-- module Main where
+--
+-- import Reactive.Banana
+-- import Reactive.Banana.Frameworks
+--
+-- import qualified Termbox.Banana as Termbox
+--
+-- main :: IO ()
+-- main =
+--   Termbox.'run' moment
+--
+-- moment
+--   :: Event Termbox.'Termbox.Event'
+--   -> Behavior (Int, Int)
+--   -> MomentIO (Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor'), Event ())
+-- moment eEvent _bSize = do
+--   let
+--     eQuit :: Event ()
+--     eQuit =
+--       () <$ filterE isKeyEsc eEvent
+--
+--   bLatestEvent :: Behavior (Maybe Termbox.'Termbox.Event') <-
+--     stepper
+--       Nothing
+--       (Just \<$\> eEvent)
+--
+--   let
+--     bCells :: Behavior Termbox.'Termbox.Cells'
+--     bCells =
+--       maybe mempty renderEvent \<$\> bLatestEvent
+--
+--   let
+--     bScene :: Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor')
+--     bScene =
+--       (,)
+--         \<$\> bCells
+--         \<*\> pure Termbox.'Termbox.NoCursor'
+--
+--   pure (bScene, eQuit)
+--
+-- renderEvent :: Termbox.'Termbox.Event' -> Termbox.'Termbox.Cells'
+-- renderEvent =
+--   foldMap (\\(i, c) -> Termbox.set i 0 (Termbox.'Termbox.Cell' c mempty mempty))
+--     . zip [0..]
+--     . show
+--
+-- isKeyEsc :: Termbox.'Termbox.Event' -> Bool
+-- isKeyEsc = \\case
+--   Termbox.'Termbox.EventKey' Termbox.'Termbox.KeyEsc' -> True
+--   _ -> False
 -- @
 
 -- | A @termbox@ event. This type alias exists only for Haddock readability;
@@ -142,64 +201,3 @@ moment render program eEvent bSize abort = do
   liftIO . render =<< valueB bScene
   reactimate (abort <$> eDone)
   reactimate' ((fmap . fmap) render eScene)
-
--- $example
---
--- Below is a sample program that simply displays the last key pressed, and
--- quits on @Esc@:
---
--- @
--- {-\# LANGUAGE LambdaCase          \#-}
--- {-\# LANGUAGE ScopedTypeVariables \#-}
---
--- module Main where
---
--- import Reactive.Banana
--- import Reactive.Banana.Frameworks
---
--- import qualified Termbox.Banana as Termbox
---
--- main :: IO ()
--- main =
---   Termbox.'run' moment
---
--- moment
---   :: Event Termbox.'Termbox.Event'
---   -> Behavior (Int, Int)
---   -> MomentIO (Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor'), Event ())
--- moment eEvent _bSize = do
---   let
---     eQuit :: Event ()
---     eQuit =
---       () <$ filterE isKeyEsc eEvent
---
---   bLatestEvent :: Behavior (Maybe Termbox.'Termbox.Event') <-
---     stepper
---       Nothing
---       (Just \<$\> eEvent)
---
---   let
---     bCells :: Behavior Termbox.'Termbox.Cells'
---     bCells =
---       maybe mempty renderEvent \<$\> bLatestEvent
---
---   let
---     bScene :: Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor')
---     bScene =
---       (,)
---         \<$\> bCells
---         \<*\> pure Termbox.'Termbox.NoCursor'
---
---   pure (bScene, eQuit)
---
--- renderEvent :: Termbox.'Termbox.Event' -> Termbox.'Termbox.Cells'
--- renderEvent =
---   foldMap (\\(i, c) -> Termbox.set i 0 (Termbox.'Termbox.Cell' c mempty mempty))
---     . zip [0..]
---     . show
---
--- isKeyEsc :: Termbox.'Termbox.Event' -> Bool
--- isKeyEsc = \\case
---   Termbox.'Termbox.EventKey' Termbox.'Termbox.KeyEsc' _ -> True
---   _ -> False
--- @
