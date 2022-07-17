@@ -4,3 +4,4 @@
 [![Hackage](https://img.shields.io/hackage/v/termbox-banana.svg)](https://hackage.haskell.org/package/termbox-banana)
 [![Stackage LTS](https://stackage.org/package/termbox-banana/badge/lts)](https://www.stackage.org/lts/package/termbox-banana)
 [![Stackage Nightly](https://stackage.org/package/termbox-banana/badge/nightly)](https://www.stackage.org/nightly/package/termbox-banana)
+[![Dependencies](https://img.shields.io/hackage-deps/v/termbox-banana)](https://packdeps.haskellers.com/reverse/termbox-banana)
