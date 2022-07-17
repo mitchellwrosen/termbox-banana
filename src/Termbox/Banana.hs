@@ -6,7 +6,8 @@ module Termbox.Banana
     -- $intro
 
     -- * Core API
-    TermboxEvent,
+    Event (..),
+    Program,
     run,
 
     -- * Re-exports from @termbox@
@@ -26,7 +27,6 @@ module Termbox.Banana
     Termbox.Cell (..),
     Termbox.Cells,
     Termbox.Cursor (..),
-    Termbox.Event (..),
     Termbox.InitError (..),
     Termbox.Key (..),
     pattern Termbox.KeyCtrl2,
@@ -45,9 +45,10 @@ module Termbox.Banana
 where
 
 import Control.Concurrent.MVar
+import Control.Monad.IO.Class (liftIO)
 import Data.Function (fix)
-import Reactive.Banana
-import Reactive.Banana.Frameworks
+import qualified Reactive.Banana as Banana
+import qualified Reactive.Banana.Frameworks as Banana
 import qualified Termbox
 
 -- $intro
@@ -63,14 +64,13 @@ import qualified Termbox
 -- This is a program that displays the last key pressed, and quits on @Esc@:
 --
 -- @
--- {-\# LANGUAGE LambdaCase          \#-}
--- {-\# LANGUAGE ScopedTypeVariables \#-}
+-- {-\# LANGUAGE LambdaCase \#-}
 --
 -- module Main where
 --
+-- import Data.Void (Void)
 -- import Reactive.Banana
 -- import Reactive.Banana.Frameworks
---
 -- import qualified Termbox.Banana as Termbox
 --
 -- main :: IO ()
@@ -78,91 +78,75 @@ import qualified Termbox
 --   Termbox.'run' moment
 --
 -- moment
---   :: Event Termbox.'Termbox.Event'
+--   :: (Void -> IO ())
+--   -> Event (Termbox.'Event' Void)
 --   -> Behavior (Int, Int)
 --   -> MomentIO (Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor'), Event ())
--- moment eEvent _bSize = do
---   let
---     eQuit :: Event ()
---     eQuit =
---       () <$ filterE isKeyEsc eEvent
---
---   bLatestEvent :: Behavior (Maybe Termbox.'Termbox.Event') <-
---     stepper
---       Nothing
---       (Just \<$\> eEvent)
---
---   let
---     bCells :: Behavior Termbox.'Termbox.Cells'
---     bCells =
---       maybe mempty renderEvent \<$\> bLatestEvent
---
---   let
---     bScene :: Behavior (Termbox.'Termbox.Cells', Termbox.'Termbox.Cursor')
---     bScene =
---       (,)
---         \<$\> bCells
---         \<*\> pure Termbox.'Termbox.NoCursor'
---
+-- moment _fireUserEvent eEvent _bSize = do
+--   let eQuit = () <$ filterE isKeyEsc eEvent
+--   bLatestEvent <- stepper Nothing (Just \<$\> eEvent)
+--   let bCells = maybe mempty renderEvent \<$\> bLatestEvent
+--   let bScene = (,) \<$\> bCells \<*\> pure Termbox.'Termbox.NoCursor'
 --   pure (bScene, eQuit)
 --
--- renderEvent :: Termbox.'Termbox.Event' -> Termbox.'Termbox.Cells'
+-- renderEvent :: Show a => Termbox.'Event' a -> Termbox.'Termbox.Cells'
 -- renderEvent =
 --   foldMap (\\(i, c) -> Termbox.set i 0 (Termbox.'Termbox.Cell' c mempty mempty))
 --     . zip [0..]
 --     . show
 --
--- isKeyEsc :: Termbox.'Termbox.Event' -> Bool
+-- isKeyEsc :: Termbox.'Event' a -> Bool
 -- isKeyEsc = \\case
---   Termbox.'Termbox.EventKey' Termbox.'Termbox.KeyEsc' -> True
+--   Termbox.'EventKey' Termbox.'Termbox.KeyEsc' -> True
 --   _ -> False
 -- @
 
--- | A @termbox@ event. This type alias exists only for Haddock readability;
--- in code, you are encouraged to use
---
--- * @Event@ for @reactive-banana@ events
--- * @Termbox.Event@ for @termbox@ events
-type TermboxEvent =
-  Termbox.Event
+-- | A key press, terminal resize, mouse click, or a user event.
+data Event a
+  = EventKey !Termbox.Key
+  | EventResize !Int !Int
+  | EventMouse !Termbox.Mouse !Int !Int
+  | EventUser a
+  deriving stock (Eq, Ord, Show)
 
-type EventSource a =
-  (AddHandler a, a -> IO ())
+type Program a b =
+  -- | Callback that produces a user event.
+  (a -> IO ()) ->
+  -- | Event stream.
+  Banana.Event (Event a) ->
+  -- | Time-varying terminal size (width, then height).
+  Banana.Behavior (Int, Int) ->
+  -- | The time-varying scene to render, and an event stream of arbitrary values, only the first of which is relevant,
+  -- which ends the @termbox@ program and returns from 'run'.
+  Banana.MomentIO (Banana.Behavior (Termbox.Cells, Termbox.Cursor), Banana.Event b)
 
--- | Run a @termbox@ program with the specified input and output modes.
---
--- Given
---
--- * the terminal event stream
--- * the time-varying terminal size (width, then height)
---
--- return
---
--- * a time-varying scene to render
--- * an event stream of arbitrary values, only the first of which is relevant,
---   which ends the @termbox@ program and returns from the @main@ action.
-run ::
-  ( Event TermboxEvent ->
-    Behavior (Int, Int) ->
-    MomentIO (Behavior (Termbox.Cells, Termbox.Cursor), Event a)
-  ) ->
-  IO a
+-- | Run a @termbox@ program.
+run :: Program a b -> IO b
 run program =
-  Termbox.run $ \width height render poll -> do
-    doneVar :: MVar a <-
-      newEmptyMVar
+  Termbox.run $ \initialWidth initialHeight render poll -> do
+    doneVar <- newEmptyMVar
+    (eventAddHandler, fireEvent) <- Banana.newAddHandler
+    (userEventAddHandler, fireUserEvent) <- Banana.newAddHandler
 
-    (eventAddHandler, fireEvent) :: EventSource TermboxEvent <-
-      newAddHandler
+    network <-
+      Banana.compile $ do
+        eEvent <- Banana.fromAddHandler eventAddHandler
+        eUserEvent <- Banana.fromAddHandler userEventAddHandler
+        let eTermboxEvent =
+              Banana.unionWith
+                const
+                ( ( \case
+                      Termbox.EventKey key -> EventKey key
+                      Termbox.EventResize width height -> EventResize width height
+                      Termbox.EventMouse mouse col row -> EventMouse mouse col row
+                  )
+                    <$> eEvent
+                )
+                (EventUser <$> eUserEvent)
 
-    network :: EventNetwork <-
-      compile $ do
-        eEvent :: Event TermboxEvent <-
-          fromAddHandler eventAddHandler
-
-        let eResize :: Event (Int, Int)
+        let eResize :: Banana.Event (Int, Int)
             eResize =
-              filterJust
+              Banana.filterJust
                 ( ( \case
                       Termbox.EventResize w h -> Just (w, h)
                       _ -> Nothing
@@ -170,34 +154,18 @@ run program =
                     <$> eEvent
                 )
 
-        bSize :: Behavior (Int, Int) <-
-          flip stepper eResize (width, height)
+        bSize <- Banana.stepper (initialWidth, initialHeight) eResize
+        (bScene, eDone) <- program fireUserEvent eTermboxEvent bSize
+        let bRender = (\(cells, cursor) -> render cells cursor) <$> bScene
+        eRender <- Banana.changes bRender
+        do
+          action <- Banana.valueB bRender
+          liftIO action
+        Banana.reactimate (putMVar doneVar <$> eDone)
+        Banana.reactimate' eRender
 
-        moment (uncurry render) program eEvent bSize (putMVar doneVar)
-
-    actuate network
+    Banana.actuate network
 
     fix $ \loop -> do
       poll >>= fireEvent
       tryReadMVar doneVar >>= maybe loop pure
-
-moment ::
-  ((Termbox.Cells, Termbox.Cursor) -> IO ()) ->
-  ( Event TermboxEvent ->
-    Behavior (Int, Int) ->
-    MomentIO (Behavior (Termbox.Cells, Termbox.Cursor), Event a)
-  ) ->
-  Event TermboxEvent ->
-  Behavior (Int, Int) ->
-  (a -> IO ()) ->
-  MomentIO ()
-moment render program eEvent bSize abort = do
-  (bScene, eDone) :: (Behavior (Termbox.Cells, Termbox.Cursor), Event a) <-
-    program eEvent bSize
-
-  eScene :: Event (Future (Termbox.Cells, Termbox.Cursor)) <-
-    changes bScene
-
-  liftIO . render =<< valueB bScene
-  reactimate (abort <$> eDone)
-  reactimate' ((fmap . fmap) render eScene)
