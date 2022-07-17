@@ -3,6 +3,7 @@
 - Parameterize `TermboxEvent` (now `Event`) by user event
 - Add `Program` type alias for readability
 - Remove `TermboxEvent` alias
+- Drop GHC 8.2 support
 
 ## [0.3.1] - 2022-04-02
 
