@@ -1,4 +1,0 @@
-packages: .
-
-allow-newer:
-  reactive-banana-1.2.1.0:hashable
